@@ -1,0 +1,188 @@
+import { useState, useEffect } from "react";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Button } from "./components/ui/button";
+
+type PlotList = {
+  name: string;
+  plots: string[];
+};
+
+type Quantities = Record<string, string>;
+
+export default function App() {
+  // ✅ Initialize from localStorage immediately
+  const [lists, setLists] = useState<PlotList[]>(() => {
+    const saved = localStorage.getItem("lists");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [quantities, setQuantities] = useState<Quantities>(() => {
+    const saved = localStorage.getItem("quantities");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [listName, setListName] = useState("");
+  const [plotInput, setPlotInput] = useState("");
+  const [selectedList, setSelectedList] = useState<string | null>(() => {
+    const savedLists = localStorage.getItem("lists");
+    if (savedLists) {
+      const parsed = JSON.parse(savedLists);
+      return parsed.length > 0 ? parsed[0].name : null;
+    }
+    return null;
+  });
+
+  // ✅ Save lists to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("lists", JSON.stringify(lists));
+  }, [lists]);
+
+  // ✅ Save quantities to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("quantities", JSON.stringify(quantities));
+  }, [quantities]);
+
+  const handleChange = (plot: string, value: string) => {
+    setQuantities((prev) => ({
+      ...prev,
+      [plot]: value,
+    }));
+  };
+
+  const handleAddList = () => {
+    if (!listName.trim() || !plotInput.trim()) return;
+
+    const plots = plotInput
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.includes("-"));
+
+    if (plots.length === 0) return;
+
+    const newList: PlotList = {
+      name: listName.trim(),
+      plots,
+    };
+
+    setLists((prev) => [...prev, newList]);
+    setListName("");
+    setPlotInput("");
+    setSelectedList(newList.name);
+  };
+
+  const handleDeleteList = (name: string) => {
+    const updatedLists = lists.filter((list) => list.name !== name);
+    setLists(updatedLists);
+
+    if (selectedList === name) {
+      setSelectedList(updatedLists.length > 0 ? updatedLists[0].name : null);
+    }
+  };
+
+  const currentList = lists.find((list) => list.name === selectedList);
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+        Lavender Plot Bid Quantity Tracker
+      </h1>
+
+      {/* Add New List Form */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <h2 className="text-lg font-semibold mb-3">Add New Plot List</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="listName">List Name</Label>
+            <Input
+              id="listName"
+              value={listName}
+              onChange={(e) => setListName(e.target.value)}
+              placeholder="e.g. My Ward 21 Plots"
+            />
+          </div>
+          <div>
+            <Label htmlFor="plots">Plots (comma separated)</Label>
+            <Input
+              id="plots"
+              value={plotInput}
+              onChange={(e) => setPlotInput(e.target.value)}
+              placeholder="e.g. 21-28, 22-10, 22-11"
+            />
+          </div>
+        </div>
+        <Button className="mt-4" onClick={handleAddList}>
+          Add List
+        </Button>
+      </div>
+
+      {/* List Selector */}
+      {lists.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {lists.map((list) => (
+            <Button
+              key={list.name}
+              variant={selectedList === list.name ? "default" : "outline"}
+              onClick={() => setSelectedList(list.name)}
+            >
+              {list.name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {/* Selected List Display */}
+      {currentList ? (
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">{currentList.name}</h2>
+            <Button
+              variant="destructive"
+              onClick={() => handleDeleteList(currentList.name)}
+            >
+              Delete
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {currentList.plots.map((plot) => {
+              const [ward, plotNumber] = plot.split("-");
+
+              return (
+                <div
+                  key={plot}
+                  className="bg-gray-50 p-3 rounded border border-gray-200 flex flex-col gap-2"
+                >
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Ward</p>
+                      <p className="text-lg font-semibold">{ward}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Plot</p>
+                      <p className="text-lg font-semibold">{plotNumber}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor={plot} className="text-sm">
+                      Bids
+                    </Label>
+                    <Input
+                      id={plot}
+                      type="number"
+                      value={quantities[plot] || ""}
+                      onChange={(e) => handleChange(plot, e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="text-gray-500">No list selected.</p>
+      )}
+    </div>
+  );
+}
