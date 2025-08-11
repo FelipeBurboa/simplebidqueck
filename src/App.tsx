@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Button } from "./components/ui/button";
+import { Checkbox } from "./components/ui/checkbox";
 
 type PlotList = {
   name: string;
@@ -9,6 +10,7 @@ type PlotList = {
 };
 
 type Quantities = Record<string, string>;
+type Pinned = Record<string, boolean>;
 
 export default function App() {
   // ✅ Initialize from localStorage immediately
@@ -19,6 +21,11 @@ export default function App() {
 
   const [quantities, setQuantities] = useState<Quantities>(() => {
     const saved = localStorage.getItem("quantities");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [pinned, setPinned] = useState<Pinned>(() => {
+    const saved = localStorage.getItem("pinned");
     return saved ? JSON.parse(saved) : {};
   });
 
@@ -43,10 +50,22 @@ export default function App() {
     localStorage.setItem("quantities", JSON.stringify(quantities));
   }, [quantities]);
 
+  // ✅ Save pinned to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("pinned", JSON.stringify(pinned));
+  }, [pinned]);
+
   const handleChange = (plot: string, value: string) => {
     setQuantities((prev) => ({
       ...prev,
       [plot]: value,
+    }));
+  };
+
+  const handleTogglePinned = (plot: string) => {
+    setPinned((prev) => ({
+      ...prev,
+      [plot]: !prev[plot],
     }));
   };
 
@@ -81,6 +100,19 @@ export default function App() {
   };
 
   const currentList = lists.find((list) => list.name === selectedList);
+
+  // ✅ Sorting logic
+  const sortedPlots = currentList
+    ? (() => {
+        const pinnedPlots = currentList.plots.filter((p) => pinned[p]);
+        const unpinnedPlots = currentList.plots
+          .filter((p) => !pinned[p])
+          .sort(
+            (a, b) => Number(quantities[a] || 0) - Number(quantities[b] || 0)
+          );
+        return [...pinnedPlots, ...unpinnedPlots];
+      })()
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -145,15 +177,19 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {currentList.plots.map((plot) => {
+            {sortedPlots.map((plot) => {
               const [ward, plotNumber] = plot.split("-");
 
               return (
                 <div
                   key={plot}
-                  className="bg-gray-50 p-3 rounded border border-gray-200 flex flex-col gap-2"
+                  className={`p-3 rounded border flex flex-col gap-2 ${
+                    pinned[plot]
+                      ? "bg-yellow-50 border-yellow-300"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
                 >
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Ward</p>
                       <p className="text-lg font-semibold">{ward}</p>
@@ -163,6 +199,20 @@ export default function App() {
                       <p className="text-lg font-semibold">{plotNumber}</p>
                     </div>
                   </div>
+
+                  {/* Pin Checkbox */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`pin-${plot}`}
+                      checked={!!pinned[plot]}
+                      onCheckedChange={() => handleTogglePinned(plot)}
+                    />
+                    <Label htmlFor={`pin-${plot}`} className="text-sm">
+                      Pin
+                    </Label>
+                  </div>
+
+                  {/* Bids Input */}
                   <div>
                     <Label htmlFor={plot} className="text-sm">
                       Bids
