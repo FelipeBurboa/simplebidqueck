@@ -147,6 +147,9 @@ export default function App() {
               onChange={(e) => setPlotInput(e.target.value)}
               placeholder="e.g. 21-28, 22-10, 22-11"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              ward-plot, ward-plot, ward-plot
+            </p>
           </div>
         </div>
         <Button className="mt-4" onClick={handleAddList}>
