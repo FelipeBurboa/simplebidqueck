@@ -13,7 +13,6 @@ type Quantities = Record<string, string>;
 type Pinned = Record<string, boolean>;
 
 export default function App() {
-  // ✅ Initialize from localStorage immediately
   const [lists, setLists] = useState<PlotList[]>(() => {
     const saved = localStorage.getItem("lists");
     return saved ? JSON.parse(saved) : [];
@@ -40,17 +39,14 @@ export default function App() {
     return null;
   });
 
-  // ✅ Save lists to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("lists", JSON.stringify(lists));
   }, [lists]);
 
-  // ✅ Save quantities to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("quantities", JSON.stringify(quantities));
   }, [quantities]);
 
-  // ✅ Save pinned to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("pinned", JSON.stringify(pinned));
   }, [pinned]);
@@ -101,15 +97,25 @@ export default function App() {
 
   const currentList = lists.find((list) => list.name === selectedList);
 
-  // ✅ Sorting logic
   const sortedPlots = currentList
     ? (() => {
         const pinnedPlots = currentList.plots.filter((p) => pinned[p]);
         const unpinnedPlots = currentList.plots
           .filter((p) => !pinned[p])
-          .sort(
-            (a, b) => Number(quantities[a] || 0) - Number(quantities[b] || 0)
-          );
+          .sort((a, b) => {
+            const aVal = quantities[a];
+            const bVal = quantities[b];
+
+            const aEmpty = aVal === undefined || aVal === "";
+            const bEmpty = bVal === undefined || bVal === "";
+
+            if (aEmpty && bEmpty) return 0;
+            if (aEmpty) return 1;
+            if (bEmpty) return -1;
+
+            return Number(aVal) - Number(bVal);
+          });
+
         return [...pinnedPlots, ...unpinnedPlots];
       })()
     : [];
@@ -220,6 +226,8 @@ export default function App() {
                     <Input
                       id={plot}
                       type="number"
+                      className="text-lg font-bold placeholder:font-normal placeholder:text-gray-400"
+                      min={0}
                       value={quantities[plot] || ""}
                       onChange={(e) => handleChange(plot, e.target.value)}
                       placeholder="0"
